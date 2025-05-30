@@ -3,16 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Flowivity Task Viewer</title>
+  <title>Flowivity – Smart Planner</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      padding: 1rem;
+      text-align: center;
+      background-color: #f7f7f7;
+      border-bottom: 1px solid #ccc;
+    }
+    .task-card {
+      margin: 1rem auto;
+      max-width: 600px;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .error {
+      margin: 2rem auto;
+      max-width: 600px;
+      padding: 1rem;
+      color: #a00;
+      background: #fee;
+      border: 1px solid #faa;
+      border-radius: 8px;
+      text-align: center;
+    }
+    footer {
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.8rem;
+      color: #888;
+      background-color: #f7f7f7;
+      border-top: 1px solid #ccc;
+    }
+  </style>
 </head>
 <body>
-  <h1>📋 Smart Planner Task Viewer</h1>
+  <header>
+    <h1>Smart Planner Task Viewer</h1>
+  </header>
+
   <div id="task"></div>
 
   <script type="module">
-    // Core Firebase imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app-check.js";
+    import {
+      initializeAppCheck,
+      ReCaptchaV3Provider
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app-check.js";
     import {
       getFirestore,
       collection,
@@ -21,60 +67,62 @@
       where
     } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
-    // Restricted Firebase config (already locked by domain/API)
-    const firebaseConfig = {
-      apiKey: "AIzaSyDxejXPOwcITSFhLzhkXNVmC5C68qNeGGE",
-      authDomain: "flowivity-efd2f.firebaseapp.com",
-      projectId: "flowivity-efd2f",
-      storageBucket: "flowivity-efd2f.appspot.com",
-      messagingSenderId: "725140207431",
-      appId: "1:725140207431:web:eea21c7aa7f201a6063e62",
-      measurementId: "G-GD8DR7NRZ9"
-    };
+    // Load config from git-ignored file
+    import { firebaseConfig, appCheckKey } from "./config.js";
 
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
 
-    // Initialize App Check with reCAPTCHA v3 (public Site Key)
+    // Enable App Check (reCAPTCHA v3)
     initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider("6Le8b08rAAAAAA4zp56M3Z3GWD_n-GrNBP_c41l3"),
+      provider: new ReCaptchaV3Provider(appCheckKey),
       isTokenAutoRefreshEnabled: true
     });
 
-    // Get Firestore instance
+    // Firestore reference
     const db = getFirestore(app);
-
-    // Fetch and render tasks
     const taskListDiv = document.getElementById("task");
+
+    // Fetch & render tasks
     async function fetchTasksForUser() {
-      const tasksQuery = query(
-        collection(db, "planner_tasks"),
-        where("userId", "==", "test_user_001")
-      );
-      const querySnapshot = await getDocs(tasksQuery);
+      try {
+        const tasksQuery = query(
+          collection(db, "planner_tasks"),
+          where("userId", "==", "test_user_001")
+        );
+        const snapshot = await getDocs(tasksQuery);
 
-      if (querySnapshot.empty) {
-        taskListDiv.innerHTML = "<p>No tasks found for this user.</p>";
-        return;
+        if (snapshot.empty) {
+          taskListDiv.innerHTML = `<p class="error">No tasks found for this user.</p>`;
+          return;
+        }
+
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          taskListDiv.innerHTML += `
+            <div class="task-card">
+              <p><strong>📌 Title:</strong> ${d.task || "—"}</p>
+              <p><strong>⚡ Category:</strong> ${d.category || "—"}</p>
+              <p><strong>📍 Status:</strong> ${d.status || "—"}</p>
+              <p><strong>⏰ Timestamp:</strong> ${
+                d.timestamp
+                  ? new Date(d.timestamp.seconds * 1000).toLocaleString()
+                  : "—"
+              }</p>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error("❌ Error fetching tasks:", err);
+        taskListDiv.innerHTML = `<p class="error">Error loading tasks. Check console for details.</p>`;
       }
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        taskListDiv.innerHTML += `
-          <div style="margin-bottom: 1rem;">
-            <p><strong>Task:</strong> ${data.task || "No title"}</p>
-            <p><strong>Category:</strong> ${data.category || "N/A"}</p>
-            <p><strong>Status:</strong> ${data.status || "N/A"}</p>
-            <p><strong>Duration:</strong> ${data.duration || "N/A"} minutes</p>
-            <p><strong>Timestamp:</strong> ${data.timestamp 
-              ? new Date(data.timestamp.seconds * 1000).toLocaleString() 
-              : "N/A"}</p>
-            <hr />
-          </div>
-        `;
-      });
     }
+
     fetchTasksForUser();
   </script>
+
+  <footer>
+    <p>🔥 Built with Firebase · Part of Flowivity</p>
+  </footer>
 </body>
 </html>
